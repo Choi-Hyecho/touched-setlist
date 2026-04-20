@@ -27,6 +27,14 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
+function daysSince(iso: string): number {
+  const last = new Date(iso);
+  last.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
   const [stats, setStats] = useState<SongStats | null>(null);
 
@@ -186,6 +194,12 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
                         </p>
                         <p className="text-xs font-semibold text-white/80 leading-snug">{last.lastPerf.title}</p>
                         <p className="text-xs text-white/35 mt-0.5">{formatDate(last.lastPerf.date)}</p>
+                        <p
+                          className="mt-1.5"
+                          style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', color: 'rgba(240,90,90,0.6)' }}
+                        >
+                          {daysSince(last.lastPerf.date)}일 전 마지막 공연
+                        </p>
                       </div>
                     );
                   })()}
