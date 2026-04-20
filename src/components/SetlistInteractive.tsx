@@ -418,10 +418,10 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
             onClick={() => setPreviewImageUrl(null)}
           />
 
-          <div className="fixed inset-0 z-[60] flex items-end justify-center p-3 pb-[env(safe-area-inset-bottom,16px)] sm:items-center sm:p-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div
               className="w-full sm:max-w-sm rounded-2xl sm:rounded-2xl border border-white/[0.1] flex flex-col"
-              style={{ background: '#181818', maxHeight: '82dvh' }}
+              style={{ background: '#181818', maxHeight: '85dvh' }}
               onClick={e => e.stopPropagation()}
             >
               {/* 탭 */}
