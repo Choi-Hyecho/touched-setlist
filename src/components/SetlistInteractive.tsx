@@ -411,80 +411,76 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
       />
 
       {previewImageUrl && (
-        <div
-          className="fixed inset-0 z-[100] flex flex-col bg-[#0a0a0a] overscroll-contain"
-          role="dialog"
-          aria-modal="true"
-          aria-label="세트리스트 이미지 미리보기"
-        >
+        <>
           <div
-            className="flex-shrink-0 flex items-center justify-between gap-3 px-4 pb-3 border-b border-white/[0.08]"
-            style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
-          >
-            <div className="flex gap-2 flex-1 min-w-0">
-              <button
-                type="button"
-                onClick={handlePosterTab}
-                disabled={downloading}
-                className="flex-1 py-1.5 rounded-full text-xs font-semibold border transition-all disabled:opacity-40"
-                style={previewBackground === 'poster'
-                  ? { background: 'rgba(230,45,45,0.15)', borderColor: 'rgba(230,45,45,0.35)', color: '#F05A5A' }
-                  : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }
-                }
-              >
-                포스터
-              </button>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={downloading}
-                className="flex-1 py-1.5 rounded-full text-xs font-semibold border transition-all disabled:opacity-40"
-                style={previewBackground === 'photo'
-                  ? { background: 'rgba(230,45,45,0.15)', borderColor: 'rgba(230,45,45,0.35)', color: '#F05A5A' }
-                  : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }
-                }
-              >
-                {userPhotoDataUrl ? '내 사진 ✓' : '내 사진'}
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPreviewImageUrl(null)}
-              className="flex-shrink-0 p-2 rounded-full text-white/40 hover:text-white hover:bg-white/5 transition"
-              aria-label="닫기"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div
-            className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center p-4"
+            className="fixed inset-0 z-50"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
             onClick={() => setPreviewImageUrl(null)}
-            role="presentation"
-          >
-            <img
-              src={previewImageUrl}
-              alt="세트리스트"
-              className="rounded-xl border border-white/[0.08] block"
-              style={{
-                maxWidth: '100%',
-                maxHeight: '100%',
-                objectFit: 'contain',
-                WebkitTouchCallout: 'default',
-              }}
-              onClick={e => e.stopPropagation()}
-            />
-          </div>
+          />
 
-          <div
-            className="flex-shrink-0 px-4 pt-2 border-t border-white/[0.06]"
-            style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
-          >
-            <button type="button" onClick={handleConfirmDownload} className="btn-primary w-full text-sm">
-              저장하기
-            </button>
+          <div className="fixed inset-0 z-[60] flex items-end justify-center p-3 pb-[env(safe-area-inset-bottom,16px)] sm:items-center sm:p-4">
+            <div
+              className="w-full sm:max-w-sm rounded-2xl sm:rounded-2xl border border-white/[0.1] flex flex-col"
+              style={{ background: '#181818', maxHeight: '82dvh' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* 탭 */}
+              <div className="flex items-center justify-between px-4 pt-3 pb-3 border-b border-white/[0.08] flex-shrink-0">
+                <div className="flex gap-2 flex-1">
+                  <button
+                    type="button"
+                    onClick={handlePosterTab}
+                    disabled={downloading}
+                    className="flex-1 py-1.5 rounded-full text-xs font-semibold border transition-all disabled:opacity-40"
+                    style={previewBackground === 'poster'
+                      ? { background: 'rgba(230,45,45,0.15)', borderColor: 'rgba(230,45,45,0.35)', color: '#F05A5A' }
+                      : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }
+                    }
+                  >
+                    포스터
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={downloading}
+                    className="flex-1 py-1.5 rounded-full text-xs font-semibold border transition-all disabled:opacity-40"
+                    style={previewBackground === 'photo'
+                      ? { background: 'rgba(230,45,45,0.15)', borderColor: 'rgba(230,45,45,0.35)', color: '#F05A5A' }
+                      : { background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)' }
+                    }
+                  >
+                    {userPhotoDataUrl ? '내 사진 ✓' : '내 사진'}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImageUrl(null)}
+                  className="ml-3 p-2 rounded-full text-white/40 hover:text-white hover:bg-white/5 transition"
+                  aria-label="닫기"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 이미지 */}
+              <div className="overflow-y-auto flex-1 p-4">
+                <img
+                  src={previewImageUrl}
+                  alt=""
+                  className="w-full h-auto rounded-xl border border-white/[0.08]"
+                  style={{ maxHeight: '55dvh', objectFit: 'contain', WebkitTouchCallout: 'default' }}
+                />
+              </div>
+
+              {/* 저장 버튼 */}
+              <div className="p-4 pt-0 flex-shrink-0 pb-[env(safe-area-inset-bottom,16px)]">
+                <button type="button" onClick={handleConfirmDownload} className="btn-primary w-full text-sm">
+                  저장하기
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </>
   );
