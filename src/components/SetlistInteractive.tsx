@@ -463,12 +463,12 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
               </div>
 
               {/* 이미지 */}
-              <div className="overflow-y-auto flex-1 p-4">
+              <div className="p-4">
                 <img
                   src={previewImageUrl}
                   alt=""
-                  className="w-full h-auto rounded-xl border border-white/[0.08]"
-                  style={{ maxHeight: '55dvh', objectFit: 'contain', WebkitTouchCallout: 'default' }}
+                  className="block mx-auto h-auto rounded-xl border border-white/[0.08]"
+                  style={{ maxHeight: '55dvh', maxWidth: '100%', WebkitTouchCallout: 'default' }}
                 />
               </div>
 
