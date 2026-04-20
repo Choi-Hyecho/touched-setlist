@@ -458,21 +458,22 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
           </div>
 
           <div
-            className="flex-1 min-h-0 w-full overflow-y-auto flex items-center justify-center p-4 cursor-default"
+            className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center p-4"
             onClick={() => setPreviewImageUrl(null)}
             role="presentation"
           >
-            <span
-              className="inline-block max-w-full max-h-full rounded-xl border border-white/[0.08] overflow-hidden"
+            <img
+              src={previewImageUrl}
+              alt="세트리스트"
+              className="rounded-xl border border-white/[0.08] block"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+                WebkitTouchCallout: 'default',
+              }}
               onClick={e => e.stopPropagation()}
-            >
-              <img
-                src={previewImageUrl}
-                alt=""
-                className="max-w-full w-auto h-auto block"
-                style={{ maxHeight: 'min(62dvh, calc(100dvh - 11rem))', objectFit: 'contain' }}
-              />
-            </span>
+            />
           </div>
 
           <div
