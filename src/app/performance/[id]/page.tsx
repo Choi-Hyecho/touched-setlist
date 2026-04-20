@@ -6,12 +6,46 @@ import { ko } from 'date-fns/locale';
 import { notFound } from 'next/navigation';
 import { supabaseServer } from '@/lib/supabase';
 import SetlistInteractive from '@/components/SetlistInteractive';
+import type { Metadata } from 'next';
 import type { Schedule, Setlist, Song } from '@/types/database.types';
 
 export const revalidate = 3600;
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const { data: raw } = await supabaseServer
+    .from('schedules')
+    .select('title, performancedate, venue, posterurl')
+    .eq('id', id)
+    .single();
+
+  const data = raw as { title: string; performancedate: string; venue: string; posterurl: string | null } | null;
+  if (!data) return {};
+
+  const date = format(new Date(data.performancedate), 'yyyy.MM.dd');
+  const description = `${date} · ${data.venue}`;
+  const images = data.posterurl ? [{ url: data.posterurl, width: 800, height: 1200 }] : [];
+
+  return {
+    title: `${data.title} — Setlist.Touched`,
+    description,
+    openGraph: {
+      title: data.title,
+      description,
+      images,
+      type: 'website',
+    },
+    twitter: {
+      card: images.length ? 'summary_large_image' : 'summary',
+      title: data.title,
+      description,
+      images: images.map(i => i.url),
+    },
+  };
 }
 
 type PerformanceData = Schedule & {
