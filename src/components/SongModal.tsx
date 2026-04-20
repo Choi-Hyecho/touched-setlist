@@ -137,7 +137,7 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
                     {stats.years.map(({ year, count }) => (
                       <div
                         key={year}
-                        className="rounded-xl p-3 flex flex-col items-center justify-center gap-0.5"
+                        className="rounded-lg px-2 py-2 flex flex-col items-center justify-center gap-0"
                         style={{
                           background: count > 0 ? 'rgba(230,45,45,0.08)' : 'rgba(255,255,255,0.03)',
                           border: count > 0 ? '1px solid rgba(230,45,45,0.18)' : '1px solid rgba(255,255,255,0.06)',
@@ -146,7 +146,7 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
                         <span
                           style={{
                             fontFamily: 'JetBrains Mono, monospace',
-                            fontSize: '0.6rem',
+                            fontSize: '0.55rem',
                             letterSpacing: '0.1em',
                             color: count > 0 ? 'rgba(240,90,90,0.7)' : 'rgba(255,255,255,0.2)',
                           }}
@@ -156,9 +156,9 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
                         <span
                           style={{
                             fontFamily: 'JetBrains Mono, monospace',
-                            fontSize: '1.375rem',
+                            fontSize: '1.1rem',
                             fontWeight: 700,
-                            lineHeight: 1,
+                            lineHeight: 1.1,
                             color: count > 0 ? '#F05A5A' : 'rgba(255,255,255,0.12)',
                           }}
                         >
@@ -167,7 +167,7 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
                         <span
                           style={{
                             fontFamily: 'JetBrains Mono, monospace',
-                            fontSize: '0.65rem',
+                            fontSize: '0.55rem',
                             color: count > 0 ? 'rgba(240,90,90,0.5)' : 'rgba(255,255,255,0.15)',
                           }}
                         >
@@ -187,19 +187,14 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
                         style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
                       >
                         <p
-                          className="uppercase tracking-widest mb-1"
+                          className="uppercase tracking-widest mb-1 flex items-center gap-1.5"
                           style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', color: 'rgba(255,255,255,0.25)' }}
                         >
                           마지막 공연
+                          <span style={{ color: 'rgba(240,90,90,0.6)' }}>({daysSince(last.lastPerf.date)}일 전)</span>
                         </p>
                         <p className="text-xs font-semibold text-white/80 leading-snug">{last.lastPerf.title}</p>
                         <p className="text-xs text-white/35 mt-0.5">{formatDate(last.lastPerf.date)}</p>
-                        <p
-                          className="mt-1.5"
-                          style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.65rem', color: 'rgba(240,90,90,0.6)' }}
-                        >
-                          {daysSince(last.lastPerf.date)}일 전 마지막 공연
-                        </p>
                       </div>
                     );
                   })()}
@@ -222,7 +217,7 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
                     href={link.url || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg text-[10px] font-semibold transition-all duration-200 ${
+                    className={`flex flex-row items-center justify-center gap-1 py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-all duration-200 ${
                       link.url ? 'active:scale-[0.97]' : 'cursor-not-allowed opacity-30'
                     }`}
                     style={
