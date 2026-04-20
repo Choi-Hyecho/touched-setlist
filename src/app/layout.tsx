@@ -12,11 +12,11 @@ export const metadata: Metadata = {
     title: 'Setlist.Touched',
     description: '터치드 공연 기록 및 세트리스트 아카이브',
     type: 'website',
-    images: [{ url: '/og.png', width: 1200, height: 630 }],
+    images: [{ url: '/og.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
-    images: ['/og.png'],
+    images: ['/og.jpg'],
   },
 };
 
