@@ -157,12 +157,20 @@ export default async function StatsPage({
     .map(([song_id, { count, title }]) => ({ song_id, title, count }));
 
   // Least played — TOUCHED 곡 중 albumtype이 'TV'가 아닌 곡, 미발매곡 제외, 버전 곡 제외, 0회 포함
+  const endOfYear = `${year}-12-31`;
   const leastPlayed: StatSong[] = ((allTouchedSongs ?? []) as any[])
     .filter((s: any) => {
       const albumtype  = s.albums?.albumtype ?? '';
-      const albumTitle = s.albums?.title ?? '';
       const isVersion  = /\(.*ver\.?\)/i.test(s.title);
-      return albumtype !== 'TV' && albumtype !== 'Cover' && !isVersion;
+      if (albumtype === 'TV' || albumtype === 'Cover' || isVersion) return false;
+
+      const releaseDate = s.albums?.releasedate;
+      // 해당 연도 이후 발매된 앨범 곡 제외
+      if (releaseDate && releaseDate > endOfYear) return false;
+      // 미공개곡(발매일 없음)은 해당 연도에 실제로 공연한 경우만 포함
+      if (!releaseDate && !countMap.has(s.id)) return false;
+
+      return true;
     })
     .map((s: any) => {
       const entry = countMap.get(s.id);
