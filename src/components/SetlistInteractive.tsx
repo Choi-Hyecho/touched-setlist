@@ -473,7 +473,7 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
               </div>
 
               {/* 저장 버튼 */}
-              <div className="p-4 pt-0 flex-shrink-0 pb-[env(safe-area-inset-bottom,16px)]">
+              <div className="px-4 pt-0 pb-5 flex-shrink-0">
                 <button type="button" onClick={handleConfirmDownload} className="btn-primary w-full text-sm">
                   저장하기
                 </button>
