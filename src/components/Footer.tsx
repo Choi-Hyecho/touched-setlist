@@ -36,7 +36,7 @@ export default function Footer() {
           문의 · 버그 제보: @닿음의 기록{' '}
       
           <a
-            href="https://x.com/RecOfTouching"
+            href="https://x.com/RecOfTouched"
             target="_blank"
             rel="noopener noreferrer"
             className="font-medium text-touched-light/90 underline decoration-white/20 underline-offset-2 transition hover:text-touched-light hover:decoration-touched-light/50"
