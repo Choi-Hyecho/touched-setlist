@@ -111,7 +111,7 @@ export default function Footer() {
             </a>
             {/* X */}
             <a
-              href="https://x.com/touched_official"
+              href="https://x.com/band_touched"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-[0.62rem] text-muted/60 transition hover:text-touched-light/90"
