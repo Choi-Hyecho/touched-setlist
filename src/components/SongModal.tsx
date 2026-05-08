@@ -20,6 +20,7 @@ interface YearStat {
 
 interface SongStats {
   years: YearStat[];
+  lastPerfOverall: { id: string; title: string; date: string } | null;
 }
 
 function formatDate(iso: string): string {
@@ -177,10 +178,11 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
                     ))}
                   </div>
 
-                  {/* 마지막 공연 — 가장 최근 연도 기준 */}
+                  {/* 마지막 공연 — 최근 연도 우선, 없으면 전체 기간 fallback */}
                   {(() => {
-                    const last = [...stats.years].reverse().find((y) => y.lastPerf);
-                    if (!last?.lastPerf) return null;
+                    const recentYear = [...stats.years].reverse().find((y) => y.lastPerf);
+                    const lastPerf = recentYear?.lastPerf ?? stats.lastPerfOverall;
+                    if (!lastPerf) return null;
                     return (
                       <div
                         className="mt-2 rounded-xl px-3 py-2.5"
@@ -191,10 +193,10 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
                           style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.55rem', color: 'rgba(255,255,255,0.25)' }}
                         >
                           마지막 공연
-                          <span style={{ color: 'rgba(240,90,90,0.6)' }}>({daysSince(last.lastPerf.date)}일 전)</span>
+                          <span style={{ color: 'rgba(240,90,90,0.6)' }}>({daysSince(lastPerf.date)}일 전)</span>
                         </p>
-                        <p className="text-xs font-semibold text-white/80 leading-snug">{last.lastPerf.title}</p>
-                        <p className="text-xs text-white/35 mt-0.5">{formatDate(last.lastPerf.date)}</p>
+                        <p className="text-xs font-semibold text-white/80 leading-snug">{lastPerf.title}</p>
+                        <p className="text-xs text-white/35 mt-0.5">{formatDate(lastPerf.date)}</p>
                       </div>
                     );
                   })()}

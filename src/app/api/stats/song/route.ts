@@ -17,27 +17,38 @@ export async function GET(request: NextRequest) {
   if (!setlists?.length) {
     return NextResponse.json({
       years: STAT_YEARS.map((y) => ({ year: y, count: 0, lastPerf: null })),
+      lastPerfOverall: null,
     });
   }
 
   const scheduleIds = setlists.map((sl: any) => sl.schedule_id);
 
-  // 2025-2026 공연 한 번에 조회
-  const { data: schedules } = await supabaseServer
-    .from('schedules')
-    .select('id, title, performancedate')
-    .in('id', scheduleIds)
-    .gte('performancedate', `${STAT_YEARS[0]}-01-01`)
-    .lte('performancedate', `${STAT_YEARS[STAT_YEARS.length - 1]}-12-31`)
-    .order('performancedate', { ascending: false });
+  // 연도별 통계 + 전체 마지막 공연 병렬 조회
+  const [{ data: schedules }, { data: allSchedules }] = await Promise.all([
+    supabaseServer
+      .from('schedules')
+      .select('id, title, performancedate')
+      .in('id', scheduleIds)
+      .gte('performancedate', `${STAT_YEARS[0]}-01-01`)
+      .lte('performancedate', `${STAT_YEARS[STAT_YEARS.length - 1]}-12-31`)
+      .order('performancedate', { ascending: false }),
+    supabaseServer
+      .from('schedules')
+      .select('id, title, performancedate')
+      .in('id', scheduleIds)
+      .order('performancedate', { ascending: false })
+      .limit(1),
+  ]);
 
   // 연도별 그룹핑
   const byYear = new Map<number, any[]>();
-  for (const s of schedules ?? []) {
+  for (const s of (schedules as any[]) ?? []) {
     const y = new Date(s.performancedate).getFullYear();
     if (!byYear.has(y)) byYear.set(y, []);
     byYear.get(y)!.push(s);
   }
+
+  const overall = (allSchedules as any[])?.[0] ?? null;
 
   return NextResponse.json({
     years: STAT_YEARS.map((y) => {
@@ -50,5 +61,8 @@ export async function GET(request: NextRequest) {
           : null,
       };
     }),
+    lastPerfOverall: overall
+      ? { id: overall.id, title: overall.title, date: overall.performancedate }
+      : null,
   });
 }
