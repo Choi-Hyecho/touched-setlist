@@ -88,14 +88,14 @@ export default function Header() {
           </Link>
 
           {/* 네비게이션 */}
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-0.5 sm:gap-1">
             {navLinks.map(({ href, label, icon: Icon }) => {
               const active = pathname === href;
               return (
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                  className={`flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-full text-sm font-medium transition-all duration-200 ${
                     active
                       ? 'text-touched-primary border border-touched-primary/30'
                       : 'text-muted hover:text-white hover:bg-white/5 border border-transparent'
@@ -109,14 +109,14 @@ export default function Header() {
             })}
 
             {/* 구분선 */}
-            <div className="w-px h-4 bg-white/10 mx-1" />
+            <div className="w-px h-4 bg-white/10 mx-0.5 sm:mx-1" />
 
             {/* 공식 스케줄 링크 */}
             <a
               href={scheduleUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-muted hover:text-white border border-transparent hover:border-white/10 transition-all duration-200 hover:bg-white/5"
+              className="flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-full text-sm font-medium text-muted hover:text-white border border-transparent hover:border-white/10 transition-all duration-200 hover:bg-white/5"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">공식 스케줄</span>

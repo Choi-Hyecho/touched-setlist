@@ -9,6 +9,13 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 import { ko } from 'date-fns/locale';
 import type { Schedule } from '@/types/database.types';
 
+// 퍼즐 레이아웃 그룹 설정
+// topOffset: 셀 높이 기준 %. 0%=상단, -50%=중간, -100%=하단
+const PUZZLE_GROUPS: { dates: string[]; topOffset: string }[] = [
+  { dates: ['2025-07-10', '2025-07-11'],               topOffset: '0%'   }, // 상단 타이틀
+  { dates: ['2025-07-16', '2025-07-17', '2025-07-18'], topOffset: '-50%' }, // 중간 열쇠
+];
+
 interface CalendarProps {
   schedules: Schedule[];
   scheduleTypes: Array<{ id: number; type_name: string; icon: string | null }>;
@@ -84,6 +91,17 @@ export default function Calendar({ schedules, scheduleTypes }: CalendarProps) {
     });
     return map;
   }, [filteredSchedules]);
+
+  const puzzleMap = useMemo(() => {
+    const map = new Map<string, { index: number; total: number; topOffset: string }>();
+    for (const group of PUZZLE_GROUPS) {
+      const n = group.dates.length;
+      group.dates.forEach((date, i) => {
+        map.set(date, { index: i, total: n, topOffset: group.topOffset });
+      });
+    }
+    return map;
+  }, []);
 
   const handlePrevMonth = () => {
     const next = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1);
@@ -264,16 +282,37 @@ export default function Calendar({ schedules, scheduleTypes }: CalendarProps) {
               <>
                 {first?.posterurl ? (
                   <>
-                    <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-300">
-                      <Image
-                        src={first.posterurl}
-                        alt={first.title}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 640px) 14vw, 120px"
-                      />
-                      <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-black/70 to-transparent" />
-                    </div>
+                    {(() => {
+                      const puzzle = puzzleMap.get(dateKey);
+                      return puzzle ? (
+                        <div className="absolute inset-0 overflow-hidden group-hover:scale-105 transition-transform duration-300">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={first.posterurl}
+                            alt={first.title}
+                            style={{
+                              position: 'absolute',
+                              width: `${puzzle.total * 100}%`,
+                              height: 'auto',
+                              left: `${-puzzle.index * 100}%`,
+                              top: puzzle.topOffset,
+                            }}
+                          />
+                          <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-black/70 to-transparent" />
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-300">
+                          <Image
+                            src={first.posterurl}
+                            alt={first.title}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 640px) 14vw, 120px"
+                          />
+                          <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-black/70 to-transparent" />
+                        </div>
+                      );
+                    })()}
                     <span className={`absolute top-1 left-1.5 text-[10px] sm:text-xs font-bold leading-none z-10 ${dow === 0 ? 'text-red-300' : dow === 6 ? 'text-blue-300' : 'text-white'}`}>
                       {format(day, 'd')}
                     </span>
