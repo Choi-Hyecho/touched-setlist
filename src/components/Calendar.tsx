@@ -10,10 +10,12 @@ import { ko } from 'date-fns/locale';
 import type { Schedule } from '@/types/database.types';
 
 // 퍼즐 레이아웃 그룹 설정
-// topOffset: 셀 높이 기준 %. 0%=상단, -50%=중간, -100%=하단
-const PUZZLE_GROUPS: { dates: string[]; topOffset: string }[] = [
-  { dates: ['2026-07-10', '2026-07-11'],               topOffset: '0%'   }, // 상단 타이틀
-  { dates: ['2026-07-16', '2026-07-17', '2026-07-18'], topOffset: '-50%' }, // 중간 열쇠
+// bgPosY : background-position Y값. 0%=상단, 50%=중간, 100%=하단
+// bgSizeW: 확대배율. 기본값 total*100%
+// focusX : 수평 포커스 중심 (0=왼쪽, 0.5=중앙, 1=오른쪽). 기본 0.5
+const PUZZLE_GROUPS: { dates: string[]; bgPosY: string; bgSizeW?: string; focusX?: number }[] = [
+  { dates: ['2026-07-10', '2026-07-11'],               bgPosY: '0%',  bgSizeW: '290%', focusX: 0.5 }, // 상단 타이틀
+  { dates: ['2026-07-16', '2026-07-17', '2026-07-18'], bgPosY: '60%'                               }, // 중간 열쇠
 ];
 
 interface CalendarProps {
@@ -93,11 +95,22 @@ export default function Calendar({ schedules, scheduleTypes }: CalendarProps) {
   }, [filteredSchedules]);
 
   const puzzleMap = useMemo(() => {
-    const map = new Map<string, { index: number; total: number; topOffset: string }>();
+    const map = new Map<string, { bgPosX: string; bgPosY: string; bgSizeW: string }>();
     for (const group of PUZZLE_GROUPS) {
       const n = group.dates.length;
+      const sizeW = group.bgSizeW ?? `${n * 100}%`;
+      const sizeFrac = parseFloat(sizeW) / 100; // e.g. 2.6
+      const focusX = group.focusX ?? 0.5;
       group.dates.forEach((date, i) => {
-        map.set(date, { index: i, total: n, topOffset: group.topOffset });
+        let xPct: number;
+        if (n <= 1 || sizeFrac <= 1) {
+          xPct = focusX * 100;
+        } else {
+          // focusX를 중심으로 n개 셀을 좌→우로 배분
+          xPct = ((focusX * sizeFrac - n / 2 + i) / (sizeFrac - 1)) * 100;
+          xPct = Math.max(0, Math.min(100, xPct));
+        }
+        map.set(date, { bgPosX: `${xPct.toFixed(1)}%`, bgPosY: group.bgPosY, bgSizeW: sizeW });
       });
     }
     return map;
@@ -285,19 +298,15 @@ export default function Calendar({ schedules, scheduleTypes }: CalendarProps) {
                     {(() => {
                       const puzzle = puzzleMap.get(dateKey);
                       return puzzle ? (
-                        <div className="absolute inset-0 overflow-hidden group-hover:scale-105 transition-transform duration-300">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={first.posterurl}
-                            alt={first.title}
-                            style={{
-                              position: 'absolute',
-                              width: `${puzzle.total * 100}%`,
-                              height: 'auto',
-                              left: `${-puzzle.index * 100}%`,
-                              top: puzzle.topOffset,
-                            }}
-                          />
+                        <div
+                          className="absolute inset-0 group-hover:scale-105 transition-transform duration-300"
+                          style={{
+                            backgroundImage: `url(${first.posterurl})`,
+                            backgroundSize: `${puzzle.bgSizeW} auto`,
+                            backgroundPosition: `${puzzle.bgPosX} ${puzzle.bgPosY}`,
+                            backgroundRepeat: 'no-repeat',
+                          }}
+                        >
                           <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-black/70 to-transparent" />
                         </div>
                       ) : (
