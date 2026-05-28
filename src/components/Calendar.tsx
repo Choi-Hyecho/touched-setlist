@@ -15,7 +15,7 @@ import type { Schedule } from '@/types/database.types';
 // focusX : 수평 포커스 중심 (0=왼쪽, 0.5=중앙, 1=오른쪽). 기본 0.5
 const PUZZLE_GROUPS: { dates: string[]; bgPosY: string; bgSizeW?: string; focusX?: number }[] = [
   { dates: ['2026-07-10', '2026-07-11'],               bgPosY: '0%',  bgSizeW: '290%', focusX: 0.5 }, // 상단 타이틀
-  { dates: ['2026-07-16', '2026-07-17', '2026-07-18'], bgPosY: '60%'                               }, // 중간 열쇠
+  { dates: ['2026-07-16', '2026-07-17', '2026-07-18'], bgPosY: '61%'                               }, // 중간 열쇠
 ];
 
 interface CalendarProps {
