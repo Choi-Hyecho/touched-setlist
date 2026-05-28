@@ -12,8 +12,8 @@ import type { Schedule } from '@/types/database.types';
 // 퍼즐 레이아웃 그룹 설정
 // topOffset: 셀 높이 기준 %. 0%=상단, -50%=중간, -100%=하단
 const PUZZLE_GROUPS: { dates: string[]; topOffset: string }[] = [
-  { dates: ['2025-07-10', '2025-07-11'],               topOffset: '0%'   }, // 상단 타이틀
-  { dates: ['2025-07-16', '2025-07-17', '2025-07-18'], topOffset: '-50%' }, // 중간 열쇠
+  { dates: ['2026-07-10', '2026-07-11'],               topOffset: '0%'   }, // 상단 타이틀
+  { dates: ['2026-07-16', '2026-07-17', '2026-07-18'], topOffset: '-50%' }, // 중간 열쇠
 ];
 
 interface CalendarProps {
