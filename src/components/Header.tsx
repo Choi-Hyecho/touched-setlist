@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, BarChart3, Music, ExternalLink } from 'lucide-react';
+import { Calendar, BarChart3, Music, ExternalLink, Disc3 } from 'lucide-react';
 import { useRef, useState, useCallback, useEffect } from 'react';
 
 const EMOJIS = ['🐱', '🐻‍❄️', '🐸', '🐰'];
@@ -18,6 +18,7 @@ interface EmojiDrop {
 
 const navLinks = [
   { href: '/',      label: 'Calendar', icon: Calendar  },
+  { href: '/songs', label: 'Songs',    icon: Disc3     },
   { href: '/stats', label: 'Stats',    icon: BarChart3 },
 ];
 
