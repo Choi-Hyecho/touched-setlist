@@ -28,9 +28,11 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
   const [userPhotoDataUrl, setUserPhotoDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const posterurlRef = useRef(posterurl);
 
-  // 공연이 바뀌면 이전 미리보기 상태 초기화
+  // 공연이 바뀌면 ref 갱신 + 이전 미리보기 상태 초기화
   useEffect(() => {
+    posterurlRef.current = posterurl;
     setPreviewImageUrl(null);
     setUserPhotoDataUrl(null);
     setError(null);
@@ -132,7 +134,7 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
 
     const bgUrl = backgroundType === 'photo'
       ? (customBgDataUrl ?? null)
-      : (posterurl ?? null);
+      : (posterurlRef.current ?? null);
 
     if (bgUrl) {
       try {
@@ -143,7 +145,7 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
           el.onerror = reject;
           el.src = bgUrl.startsWith('data:')
             ? bgUrl
-            : `/api/poster-proxy?url=${encodeURIComponent(bgUrl)}`;
+            : `/api/poster-proxy?url=${encodeURIComponent(bgUrl)}&t=${Date.now()}`;
         });
         const targetRatio = W / H;
         const sourceRatio = img.width / img.height;
