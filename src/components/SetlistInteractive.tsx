@@ -29,6 +29,13 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 공연이 바뀌면 이전 미리보기 상태 초기화
+  useEffect(() => {
+    setPreviewImageUrl(null);
+    setUserPhotoDataUrl(null);
+    setError(null);
+  }, [posterurl, performanceDate]);
+
   useEffect(() => {
     if (!previewImageUrl) return;
     const prev = document.body.style.overflow;
