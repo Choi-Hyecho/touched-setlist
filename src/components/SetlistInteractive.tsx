@@ -40,6 +40,43 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
 
   const date = new Date(performanceDate);
 
+  const wrapToTwoLines = (
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    maxW: number
+  ): string[] => {
+    if (ctx.measureText(text).width <= maxW) return [text];
+
+    const words = text.split(' ');
+    if (words.length > 1) {
+      // 단어 경계 기준으로 line1에 최대한 채우기
+      let line1 = words[0];
+      let i = 1;
+      while (i < words.length - 1 && ctx.measureText(line1 + ' ' + words[i]).width <= maxW) {
+        line1 += ' ' + words[i];
+        i++;
+      }
+      const line2 = words.slice(i).join(' ');
+      if (ctx.measureText(line2).width <= maxW) return [line1, line2];
+      // line2 still too long → word-boundary truncate
+      const l2w = line2.split(' ');
+      while (l2w.length > 1 && ctx.measureText(l2w.join(' ') + '…').width > maxW) l2w.pop();
+      return [line1, l2w.join(' ') + '…'];
+    }
+
+    // 단어가 하나뿐 → 글자 단위 break
+    let l1 = '';
+    for (const ch of text) {
+      if (ctx.measureText(l1 + ch).width > maxW) break;
+      l1 += ch;
+    }
+    const l2raw = text.slice(l1.length);
+    if (ctx.measureText(l2raw).width <= maxW) return [l1, l2raw];
+    let l2 = l2raw;
+    while (l2.length > 1 && ctx.measureText(l2 + '…').width > maxW) l2 = l2.slice(0, -1);
+    return [l1, l2 + '…'];
+  };
+
   const fitTitleFontSize = (
     ctx: CanvasRenderingContext2D,
     text: string,
@@ -146,8 +183,10 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
     ctx.restore();
 
     // ── typography setup ─────────────────────────────────────────────────────
-    // 헤더가 너무 타이트해 보이지 않도록 상단 여백을 조금 더 줌
-    const padX = 64;
+    // 10곡 이하 → 1단(padX 64) / 11곡 이상 → 2단(padX 44, 좌우 여백 축소)
+    const n = setlists.length;
+    const use2Col = n > 10;
+    const padX = use2Col ? 44 : 64;
     const tLeft = pX + padX;
     const tRight = pX + pW - padX;
     const maxW = pW - padX * 2;
@@ -168,9 +207,11 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
     const topPad = 72;
     // listArea = pH - topPad - headerRow - gap - dividerGap - branding
     const listArea = Math.max(200, pH - topPad - headerRowH - 22 - 28 - 52);
-    const lh = Math.max(44, Math.min(60, Math.floor(listArea / Math.max(1, setlists.length))));
-    const fs = Math.max(24, Math.min(36, lh - 14));
-    const maxItems = Math.max(1, Math.floor(listArea / lh));
+    const rowCount = use2Col ? Math.ceil(n / 2) : n;
+    // lh = listArea 가득 채우도록, fs = 항상 2줄 wrap 가능하게
+    const lh = Math.max(44, Math.min(200, Math.floor(listArea / Math.max(1, rowCount))));
+    const fs = Math.max(22, Math.min(use2Col ? 52 : 72, Math.floor((lh - 8) / 2.3)));
+    const maxItems = use2Col ? rowCount * 2 : rowCount;
 
     let y = pY + topPad;
 
@@ -217,39 +258,97 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
     ctx.beginPath(); ctx.moveTo(tLeft, y); ctx.lineTo(tLeft + 52, y); ctx.stroke();
     y += 28;
 
-    // ── song list ─────────────────────────────────────────────────────────────
-    const numW = 56;
-    const songLeft = tLeft + numW;
-    const songMaxW = maxW - numW;
+    // ── song list ────────────────────────────────────────────────────────────
+    const numCellW   = use2Col ? 52 : 68;
+    const colGap     = use2Col ? 24 : 0;
+    const colW       = use2Col ? (maxW - colGap) / 2 : maxW;
+    const titleCellW = colW - numCellW;
+    const numFs      = Math.max(14, Math.min(52, Math.round(fs * 0.78)));
+    const tagFs      = Math.round(fs * 0.58);
+    const visibleItems = setlists.slice(0, maxItems);
 
-    setlists.slice(0, maxItems).forEach((item, i) => {
+    const drawSongRow = (item: typeof visibleItems[0], globalIdx: number, colX: number, row: number) => {
+      const iy = y + row * lh;
+
+      // 행 하단 구분선
+      ctx.strokeStyle = 'rgba(255,255,255,0.055)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(colX, iy + lh - 1);
+      ctx.lineTo(colX + colW, iy + lh - 1);
+      ctx.stroke();
+
+      // 번호 열 세로 구분선
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+      ctx.beginPath();
+      ctx.moveTo(colX + numCellW, iy + lh * 0.2);
+      ctx.lineTo(colX + numCellW, iy + lh * 0.8);
+      ctx.stroke();
+
+      const encL   = getEncoreLabel(item.notes);
+      const isEnc  = !!encL;
+      const prefix = encL ?? `${globalIdx + 1}`;
+
+      // 번호
+      ctx.textAlign = 'center';
+      ctx.font = `700 ${numFs}px JetBrains Mono, monospace`;
+      ctx.fillStyle = isEnc ? 'rgba(255,190,50,0.8)' : 'rgba(230,45,45,0.65)';
+      ctx.fillText(prefix, colX + numCellW / 2, iy + (lh - numFs) / 2);
+
+      // 제목
       const songTitle = item.songs?.title ?? '알 수 없는 곡';
-      const encL = getEncoreLabel(item.notes);
-      const isEnc = !!encL;
-      const prefix = encL ?? `${i + 1}`;
-      const iy = y + i * lh;
+      const albumName = item.songs?.albums?.title;
+      const tagLabel  = (albumName === '미발매곡' || albumName === '커버곡') ? `(${albumName})` : null;
+      const songLeft  = colX + numCellW + 12;
+      const songMaxW2 = titleCellW - 12;
 
-      // Number
-      ctx.textAlign = 'right';
-      ctx.font = `600 ${Math.round(fs * 0.72)}px JetBrains Mono, monospace`;
-      ctx.fillStyle = isEnc ? 'rgba(255,190,50,0.75)' : 'rgba(230,45,45,0.6)';
-      ctx.fillText(prefix, tLeft + numW - 10, iy + (lh - Math.round(fs * 0.72)) / 2);
-
-      // Title
-      ctx.textAlign = 'left';
+      // 제목은 tagW 고려 없이 전체 폭으로 wrap (짧은 제목이 억지로 쪼개지는 것 방지)
       ctx.font = `500 ${fs}px Pretendard, sans-serif`;
-      ctx.fillStyle = '#eeeeee';
-      let t = songTitle;
-      while (t.length > 0 && ctx.measureText(t).width > songMaxW) t = t.slice(0, -1);
-      if (t !== songTitle) t += '…';
-      ctx.fillText(t, songLeft, iy + (lh - fs) / 2);
-    });
+      const lines = wrapToTwoLines(ctx, songTitle, songMaxW2);
+      const lineH  = fs + 4;
+      const totalH = lines.length * lineH;
+      const textY  = iy + (lh - totalH) / 2;
+
+      lines.forEach((line, li) => {
+        ctx.font = `500 ${fs}px Pretendard, sans-serif`;
+        ctx.fillStyle = '#eeeeee';
+        ctx.textAlign = 'left';
+        ctx.fillText(line, songLeft, textY + li * lineH);
+
+        if (tagLabel && li === lines.length - 1) {
+          const lineW = ctx.measureText(line).width;
+          ctx.font = `700 ${tagFs}px Pretendard, sans-serif`;
+          ctx.fillStyle = albumName === '미발매곡' ? 'rgba(230,45,45,0.65)' : 'rgba(255,190,50,0.65)';
+          ctx.fillText(tagLabel, songLeft + lineW + 8, textY + li * lineH + (fs - tagFs) / 2);
+        }
+      });
+    };
+
+    if (use2Col) {
+      const leftItems  = visibleItems.slice(0, rowCount);
+      const rightItems = visibleItems.slice(rowCount);
+      const leftColX   = tLeft;
+      const rightColX  = tLeft + colW + colGap;
+
+      leftItems.forEach((item, row) => drawSongRow(item, row, leftColX, row));
+      rightItems.forEach((item, row) => drawSongRow(item, rowCount + row, rightColX, row));
+
+      // 두 열 사이 세로 구분선
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tLeft + colW + colGap / 2, y);
+      ctx.lineTo(tLeft + colW + colGap / 2, y + rowCount * lh);
+      ctx.stroke();
+    } else {
+      visibleItems.forEach((item, i) => drawSongRow(item, i, tLeft, i));
+    }
 
     if (setlists.length > maxItems) {
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
       ctx.font = `400 26px Pretendard, sans-serif`;
-      ctx.fillText(`+ ${setlists.length - maxItems} more`, pX + pW / 2, y + maxItems * lh + 10);
+      ctx.fillText(`+ ${setlists.length - maxItems} more`, pX + pW / 2, y + rowCount * lh + 10);
     }
 
     // ── branding ──────────────────────────────────────────────────────────────
