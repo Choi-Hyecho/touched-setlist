@@ -136,13 +136,17 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
       ? (customBgDataUrl ?? null)
       : (posterurlRef.current ?? null);
 
+    console.log('[SetlistImage] posterurl prop:', posterurl);
+    console.log('[SetlistImage] posterurlRef.current:', posterurlRef.current);
+    console.log('[SetlistImage] bgUrl:', bgUrl);
+
     if (bgUrl) {
       try {
         const img = await new Promise<HTMLImageElement>((resolve, reject) => {
           const el = new window.Image();
           el.crossOrigin = 'anonymous';
-          el.onload = () => resolve(el);
-          el.onerror = reject;
+          el.onload = () => { console.log('[SetlistImage] 이미지 로드 성공:', el.src); resolve(el); };
+          el.onerror = (e) => { console.error('[SetlistImage] 이미지 로드 실패:', el.src, e); reject(e); };
           el.src = bgUrl.startsWith('data:')
             ? bgUrl
             : `/api/poster-proxy?url=${encodeURIComponent(bgUrl)}&t=${Date.now()}`;
