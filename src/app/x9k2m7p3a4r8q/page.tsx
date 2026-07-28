@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Calendar, Music, Plus, X, ChevronDown,
-  CheckCircle, AlertCircle, Loader, MapPin,
+  CheckCircle, AlertCircle, Loader, MapPin, Copy, Check,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────
@@ -11,6 +11,39 @@ interface SongOption { id: string; title: string; album_title?: string | null }
 interface EntryState  { rowId: number; song_id: string; encore: boolean; notes: string | null }
 interface ScheduleInfo { id: string; title: string; venue: string; city: string | null }
 interface ScheduleType { id: number; type_name: string; icon: string | null }
+
+// ── Tweet text builder ───────────────────────────────────────
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+function buildTweetText(
+  scheduleTitle: string,
+  dateStr: string,
+  entries: EntryState[],
+  songs: SongOption[],
+) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const weekday = WEEKDAYS[new Date(y, m - 1, d).getDay()];
+  const dateLine = `${String(y).slice(2)}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')} (${weekday})`;
+
+  const songTitle = (id: string) => songs.find(s => s.id === id)?.title ?? '';
+  const main   = entries.filter(e => !e.encore);
+  const encore = entries.filter(e => e.encore);
+
+  return [
+    dateLine,
+    '',
+    '@band_touched',
+    '',
+    scheduleTitle,
+    '',
+    '#터치드 #TOUCHED',
+    '',
+    'SETLIST.',
+    '',
+    ...main.map((e, i) => `${i + 1}. ${songTitle(e.song_id)}`),
+    ...encore.map((e, i) => `E${i + 1}. ${songTitle(e.song_id)}`),
+  ].join('\n');
+}
 
 // ── SongCombobox ──────────────────────────────────────────────
 function SongCombobox({
@@ -469,6 +502,9 @@ export default function AdminPage() {
 
   const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [resultMsg, setResultMsg]     = useState('');
+  const [tweetText, setTweetText]     = useState('');
+  const [copied, setCopied]           = useState(false);
+  const [copyError, setCopyError]     = useState('');
 
   useEffect(() => {
     setSongsLoading(true);
@@ -509,6 +545,9 @@ export default function AdminPage() {
     setDate(d);
     setSubmitState('idle');
     setResultMsg('');
+    setTweetText('');
+    setCopied(false);
+    setCopyError('');
     setSchedule(null);
     setScheduleOptions([]);
 
@@ -568,12 +607,26 @@ export default function AdminPage() {
       if (!res.ok) { setSubmitState('error'); setResultMsg(json.error ?? '오류'); return; }
       setSubmitState('success');
       setResultMsg(`${json.schedule.title} — ${json.inserted}곡 등록 완료`);
+      setTweetText(buildTweetText(json.schedule.title, date, valid, songs));
+      setCopied(false);
+      setCopyError('');
       setEntries([
         { rowId: 1, song_id: '', encore: false, notes: null },
         { rowId: 2, song_id: '', encore: false, notes: null },
       ]);
       nextRowId.current = 3;
     } catch { setSubmitState('error'); setResultMsg('네트워크 오류'); }
+  };
+
+  const handleCopyTweet = async () => {
+    try {
+      await navigator.clipboard.writeText(tweetText);
+      setCopied(true);
+      setCopyError('');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopyError('클립보드 복사에 실패했습니다.');
+    }
   };
 
   const validCount = entries.filter(e => e.song_id).length;
@@ -735,6 +788,38 @@ export default function AdminPage() {
               {validCount > 0 ? `${validCount}곡 등록하기` : '등록하기'}
             </button>
           </div>
+
+          {/* 트윗 텍스트 */}
+          {submitState === 'success' && tweetText && (
+            <div className="card space-y-2">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-bold text-white text-sm uppercase tracking-widest" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                  트윗 텍스트
+                </h2>
+                <button
+                  type="button"
+                  onClick={handleCopyTweet}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={
+                    copied
+                      ? { background: 'rgba(34,197,94,0.15)', color: '#4ADE80' }
+                      : { background: 'rgba(230,45,45,0.15)', color: '#F05A5A' }
+                  }
+                >
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? '복사됨' : '복사하기'}
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={tweetText}
+                rows={tweetText.split('\n').length}
+                onFocus={e => e.target.select()}
+                className="w-full text-sm text-white/80 bg-transparent border border-white/[0.08] rounded-xl p-3 resize-none outline-none"
+              />
+              {copyError && <p className="text-xs text-red-400">{copyError}</p>}
+            </div>
+          )}
 
           {/* 새로운 곡 */}
           <NewSongSection onAdded={handleSongAdded} />
