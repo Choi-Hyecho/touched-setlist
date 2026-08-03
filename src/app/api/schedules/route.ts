@@ -1,5 +1,6 @@
 import { supabaseServer } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 
 export const revalidate = 3600; // ISG: 1시간마다 재생성
 
@@ -72,6 +73,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    revalidatePath('/');
 
     return NextResponse.json(data[0], { status: 201 });
   } catch (error) {

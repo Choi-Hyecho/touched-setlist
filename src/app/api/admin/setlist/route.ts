@@ -1,5 +1,6 @@
 import { supabaseServer } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 
 interface SetlistEntry {
   song_id: string;
@@ -33,6 +34,9 @@ export async function POST(request: NextRequest) {
 
     const { error: insertError } = await supabaseServer.from('setlists').insert(rows);
     if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
+
+    revalidatePath('/');
+    revalidatePath(`/performance/${schedule.id}`);
 
     return NextResponse.json({ success: true, schedule: { id: schedule.id, title: schedule.title }, inserted: rows.length });
   } catch {
