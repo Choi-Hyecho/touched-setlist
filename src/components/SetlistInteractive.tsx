@@ -5,6 +5,9 @@ import { Music, Download, X } from 'lucide-react';
 import { format } from 'date-fns';
 import SongModal from '@/components/SongModal';
 import type { Song, Setlist } from '@/types/database.types';
+import { SITE_URL } from '@/lib/constants';
+
+const SITE_LABEL = SITE_URL.replace(/^https?:\/\//, '');
 
 interface Props {
   setlists: Array<Setlist & { songs?: Song & { albums?: { id: string; title: string; albumarturl: string | null } } }>;
@@ -219,7 +222,7 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
     const headerRowH = 96;
     const topPad = 72;
     // listArea = pH - topPad - headerRow - gap - dividerGap - branding
-    const listArea = Math.max(200, pH - topPad - headerRowH - 22 - 28 - 52);
+    const listArea = Math.max(200, pH - topPad - headerRowH - 22 - 28 - 74);
     const rowCount = use2Col ? Math.ceil(n / 2) : n;
     // lh = listArea 가득 채우도록, fs = 항상 2줄 wrap 가능하게
     const lh = Math.max(44, Math.min(200, Math.floor(listArea / Math.max(1, rowCount))));
@@ -369,7 +372,11 @@ export default function SetlistInteractive({ setlists, performanceTitle, perform
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.font = '700 20px Montserrat, Pretendard, sans-serif';
-    ctx.fillText('SETLIST.TOUCHED', tRight, pY + pH - 32);
+    ctx.fillText('SETLIST.TOUCHED', tRight, pY + pH - 54);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.24)';
+    ctx.font = '400 17px JetBrains Mono, monospace';
+    ctx.fillText(SITE_LABEL, tRight, pY + pH - 30);
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';

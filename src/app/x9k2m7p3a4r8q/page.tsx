@@ -5,6 +5,7 @@ import {
   Calendar, Music, Plus, X, ChevronDown,
   CheckCircle, AlertCircle, Loader, MapPin, Copy, Check,
 } from 'lucide-react';
+import { SITE_URL } from '@/lib/constants';
 
 // ── Types ─────────────────────────────────────────────────────
 interface SongOption { id: string; title: string; album_title?: string | null }
@@ -42,6 +43,8 @@ function buildTweetText(
     '',
     ...main.map((e, i) => `${i + 1}. ${songTitle(e.song_id)}`),
     ...encore.map((e, i) => `E${i + 1}. ${songTitle(e.song_id)}`),
+    '',
+    SITE_URL,
   ].join('\n');
 }
 
