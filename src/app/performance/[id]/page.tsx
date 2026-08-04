@@ -150,6 +150,8 @@ export default async function PerformancePage({ params }: PageProps) {
         performanceDate={data.performancedate}
         posterurl={data.posterurl ?? null}
         description={data.description ?? null}
+        venue={data.venue}
+        city={data.city ?? null}
       />
     </div>
   );

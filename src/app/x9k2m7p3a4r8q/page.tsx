@@ -6,12 +6,27 @@ import {
   CheckCircle, AlertCircle, Loader, MapPin, Copy, Check,
 } from 'lucide-react';
 import { SITE_URL } from '@/lib/constants';
+import { renderSetlistPoster } from '@/lib/setlistPoster';
 
 // ── Types ─────────────────────────────────────────────────────
 interface SongOption { id: string; title: string; album_title?: string | null }
 interface EntryState  { rowId: number; song_id: string; encore: boolean; notes: string | null }
-interface ScheduleInfo { id: string; title: string; venue: string; city: string | null }
+interface ScheduleInfo { id: string; title: string; venue: string; city: string | null; posterurl: string | null }
 interface ScheduleType { id: number; type_name: string; icon: string | null }
+
+async function loadImageForTweet(url: string): Promise<HTMLImageElement | null> {
+  try {
+    return await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new window.Image();
+      el.crossOrigin = 'anonymous';
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = `/api/poster-proxy?url=${encodeURIComponent(url)}&t=${Date.now()}`;
+    });
+  } catch {
+    return null;
+  }
+}
 
 // ── Tweet text builder ───────────────────────────────────────
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -508,6 +523,10 @@ export default function AdminPage() {
   const [tweetText, setTweetText]     = useState('');
   const [copied, setCopied]           = useState(false);
   const [copyError, setCopyError]     = useState('');
+  const [postState, setPostState]     = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [postMsg, setPostMsg]         = useState('');
+  const [tweetImageDataUrl, setTweetImageDataUrl] = useState<string | null>(null);
+  const [imageGenerating, setImageGenerating]     = useState(false);
 
   useEffect(() => {
     setSongsLoading(true);
@@ -521,7 +540,7 @@ export default function AdminPage() {
   }, []);
 
   const loadSchedule = (data: any) => {
-    setSchedule({ id: data.id, title: data.title, venue: data.venue, city: data.city });
+    setSchedule({ id: data.id, title: data.title, venue: data.venue, city: data.city, posterurl: data.posterurl ?? null });
     setScheduleState('idle');
     const existing: any[] = data.setlists ?? [];
     if (existing.length > 0) {
@@ -551,6 +570,10 @@ export default function AdminPage() {
     setTweetText('');
     setCopied(false);
     setCopyError('');
+    setPostState('idle');
+    setPostMsg('');
+    setTweetImageDataUrl(null);
+    setImageGenerating(false);
     setSchedule(null);
     setScheduleOptions([]);
 
@@ -593,6 +616,27 @@ export default function AdminPage() {
   const handleSongAdded = (song: SongOption) =>
     setSongs(prev => [...prev, song].sort((a, b) => a.title.localeCompare(b.title, 'ko')));
 
+  const generateTweetImage = async (title: string, items: EntryState[], posterurl: string | null) => {
+    setImageGenerating(true);
+    try {
+      const img = posterurl ? await loadImageForTweet(posterurl) : null;
+      const dataUrl = renderSetlistPoster(img, {
+        performanceTitle: title,
+        performanceDate: date,
+        songs: items.map(e => ({
+          title: songs.find(s => s.id === e.song_id)?.title ?? '',
+          albumTitle: songs.find(s => s.id === e.song_id)?.album_title ?? null,
+          notes: e.notes,
+        })),
+      });
+      setTweetImageDataUrl(dataUrl);
+    } catch {
+      setTweetImageDataUrl(null);
+    } finally {
+      setImageGenerating(false);
+    }
+  };
+
   const handleSubmit = async () => {
     const valid = entries.filter(e => e.song_id);
     if (!schedule || valid.length === 0) return;
@@ -613,6 +657,10 @@ export default function AdminPage() {
       setTweetText(buildTweetText(json.schedule.title, date, valid, songs));
       setCopied(false);
       setCopyError('');
+      setPostState('idle');
+      setPostMsg('');
+      setTweetImageDataUrl(null);
+      void generateTweetImage(json.schedule.title, valid, schedule.posterurl);
       setEntries([
         { rowId: 1, song_id: '', encore: false, notes: null },
         { rowId: 2, song_id: '', encore: false, notes: null },
@@ -629,6 +677,26 @@ export default function AdminPage() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopyError('클립보드 복사에 실패했습니다.');
+    }
+  };
+
+  const handlePostTweet = async () => {
+    if (!tweetText.trim() || postState === 'loading') return;
+    setPostState('loading');
+    setPostMsg('');
+    try {
+      const res = await fetch('/api/admin/tweet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: tweetText, image: tweetImageDataUrl }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setPostState('error'); setPostMsg(json.error ?? '게시 실패'); return; }
+      setPostState('success');
+      setPostMsg('트위터에 게시되었습니다.');
+    } catch {
+      setPostState('error');
+      setPostMsg('네트워크 오류');
     }
   };
 
@@ -814,13 +882,57 @@ export default function AdminPage() {
                 </button>
               </div>
               <textarea
-                readOnly
                 value={tweetText}
-                rows={tweetText.split('\n').length}
-                onFocus={e => e.target.select()}
-                className="w-full text-sm text-white/80 bg-transparent border border-white/[0.08] rounded-xl p-3 resize-none outline-none"
+                onChange={e => { setTweetText(e.target.value); setPostState('idle'); setPostMsg(''); }}
+                rows={Math.max(tweetText.split('\n').length, 6)}
+                className="w-full text-sm text-white/80 bg-transparent border border-white/[0.08] rounded-xl p-3 resize-y outline-none focus:border-touched-primary/40"
               />
+              <p className={`text-xs text-right ${tweetText.length > 280 ? 'text-red-400' : 'text-muted'}`}>
+                {tweetText.length} / 280
+              </p>
               {copyError && <p className="text-xs text-red-400">{copyError}</p>}
+
+              <div className="flex items-center gap-3 pt-1">
+                {imageGenerating ? (
+                  <div className="flex items-center gap-2 text-xs text-muted">
+                    <Loader className="w-3.5 h-3.5 animate-spin" /> 첨부 이미지 생성 중...
+                  </div>
+                ) : tweetImageDataUrl ? (
+                  <>
+                    <img
+                      src={tweetImageDataUrl}
+                      alt=""
+                      className="w-14 h-[84px] object-cover rounded-lg border border-white/[0.08] flex-shrink-0"
+                    />
+                    <p className="text-xs text-muted">이 이미지가 트윗에 함께 첨부됩니다.</p>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted">첨부 이미지 없음 (텍스트만 게시됩니다)</p>
+                )}
+              </div>
+
+              {postMsg && (
+                <div className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm ${
+                  postState === 'success'
+                    ? 'text-green-400 bg-green-400/10 border border-green-400/20'
+                    : 'text-red-400 bg-red-400/10 border border-red-400/20'
+                }`}>
+                  {postState === 'success'
+                    ? <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                    : <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  }
+                  {postMsg}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handlePostTweet}
+                disabled={!tweetText.trim() || tweetText.length > 280 || postState === 'loading' || postState === 'success' || imageGenerating}
+                className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {postState === 'loading' && <Loader className="w-4 h-4 animate-spin" />}
+                {postState === 'success' ? '게시 완료' : '트위터에 게시하기'}
+              </button>
             </div>
           )}
 

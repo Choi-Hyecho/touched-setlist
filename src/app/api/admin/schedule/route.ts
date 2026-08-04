@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabaseServer
     .from('schedules')
-    .select('id, title, venue, city, setlists(id, song_id, order, notes, songs(id, title))')
+    .select('id, title, venue, city, posterurl, setlists(id, song_id, order, notes, songs(id, title, albums(title)))')
     .eq('performancedate', date)
     .order('title', { ascending: true });
 
