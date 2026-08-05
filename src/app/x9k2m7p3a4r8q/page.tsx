@@ -4,9 +4,11 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Calendar, Music, Plus, X, ChevronDown,
   CheckCircle, AlertCircle, Loader, MapPin, Copy, Check,
+  GalleryHorizontal, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { SITE_URL } from '@/lib/constants';
-import { renderSetlistPoster } from '@/lib/setlistPoster';
+import { renderSetlistPoster, type PosterSongInput } from '@/lib/setlistPoster';
+import { createYoutubeSlides } from '@/lib/youtubeSlides';
 
 // ── Types ─────────────────────────────────────────────────────
 interface SongOption { id: string; title: string; album_title?: string | null }
@@ -527,6 +529,18 @@ export default function AdminPage() {
   const [postMsg, setPostMsg]         = useState('');
   const [tweetImageDataUrl, setTweetImageDataUrl] = useState<string | null>(null);
   const [imageGenerating, setImageGenerating]     = useState(false);
+  const [submittedSongs, setSubmittedSongs]       = useState<PosterSongInput[]>([]);
+  const [ytSlides, setYtSlides]         = useState<string[] | null>(null);
+  const [ytIndex, setYtIndex]           = useState(0);
+  const [ytGenerating, setYtGenerating] = useState(false);
+  const [ytError, setYtError]           = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ytSlides) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [ytSlides]);
 
   useEffect(() => {
     setSongsLoading(true);
@@ -574,6 +588,11 @@ export default function AdminPage() {
     setPostMsg('');
     setTweetImageDataUrl(null);
     setImageGenerating(false);
+    setSubmittedSongs([]);
+    setYtSlides(null);
+    setYtIndex(0);
+    setYtGenerating(false);
+    setYtError(null);
     setSchedule(null);
     setScheduleOptions([]);
 
@@ -616,18 +635,14 @@ export default function AdminPage() {
   const handleSongAdded = (song: SongOption) =>
     setSongs(prev => [...prev, song].sort((a, b) => a.title.localeCompare(b.title, 'ko')));
 
-  const generateTweetImage = async (title: string, items: EntryState[], posterurl: string | null) => {
+  const generateTweetImage = async (title: string, songInputs: PosterSongInput[], posterurl: string | null) => {
     setImageGenerating(true);
     try {
       const img = posterurl ? await loadImageForTweet(posterurl) : null;
       const dataUrl = renderSetlistPoster(img, {
         performanceTitle: title,
         performanceDate: date,
-        songs: items.map(e => ({
-          title: songs.find(s => s.id === e.song_id)?.title ?? '',
-          albumTitle: songs.find(s => s.id === e.song_id)?.album_title ?? null,
-          notes: e.notes,
-        })),
+        songs: songInputs,
       });
       setTweetImageDataUrl(dataUrl);
     } catch {
@@ -652,6 +667,12 @@ export default function AdminPage() {
       });
       const json = await res.json();
       if (!res.ok) { setSubmitState('error'); setResultMsg(json.error ?? '오류'); return; }
+      const songInputs: PosterSongInput[] = valid.map(e => ({
+        title: songs.find(s => s.id === e.song_id)?.title ?? '',
+        albumTitle: songs.find(s => s.id === e.song_id)?.album_title ?? null,
+        notes: e.notes,
+      }));
+
       setSubmitState('success');
       setResultMsg(`${json.schedule.title} — ${json.inserted}곡 등록 완료`);
       setTweetText(buildTweetText(json.schedule.title, date, valid, songs));
@@ -660,7 +681,11 @@ export default function AdminPage() {
       setPostState('idle');
       setPostMsg('');
       setTweetImageDataUrl(null);
-      void generateTweetImage(json.schedule.title, valid, schedule.posterurl);
+      setSubmittedSongs(songInputs);
+      setYtSlides(null);
+      setYtIndex(0);
+      setYtError(null);
+      void generateTweetImage(json.schedule.title, songInputs, schedule.posterurl);
       setEntries([
         { rowId: 1, song_id: '', encore: false, notes: null },
         { rowId: 2, song_id: '', encore: false, notes: null },
@@ -698,6 +723,56 @@ export default function AdminPage() {
       setPostState('error');
       setPostMsg('네트워크 오류');
     }
+  };
+
+  const handleOpenYoutubePreview = async () => {
+    if (!schedule) return;
+    setYtError(null);
+    setYtGenerating(true);
+    try {
+      const slides = await createYoutubeSlides({
+        performanceTitle: schedule.title,
+        performanceDate: date,
+        venue: schedule.venue,
+        city: schedule.city,
+        posterurl: schedule.posterurl,
+        songs: submittedSongs,
+      });
+      setYtSlides(slides);
+      setYtIndex(0);
+    } catch {
+      setYtError('이미지 생성 중 오류가 발생했습니다.');
+    } finally {
+      setYtGenerating(false);
+    }
+  };
+
+  const triggerImageDownload = (dataUrl: string, suffix: string) => {
+    const safeTitle = (schedule?.title ?? 'performance').replace(/[\\/:*?"<>|]/g, '').slice(0, 30);
+    const link = document.createElement('a');
+    link.download = `setlist-yt-${date.replace(/-/g, '')}-${safeTitle}-${suffix}.png`;
+    link.href = dataUrl;
+    link.click();
+  };
+
+  const ytSlideSuffix = (i: number) => (i === 0 ? 'cover' : `set${i}`);
+
+  const handleDownloadCurrentYoutube = () => {
+    if (!ytSlides) return;
+    triggerImageDownload(ytSlides[ytIndex], ytSlideSuffix(ytIndex));
+  };
+
+  const handleDownloadAllYoutube = () => {
+    if (!ytSlides) return;
+    ytSlides.forEach((dataUrl, i) => {
+      setTimeout(() => triggerImageDownload(dataUrl, ytSlideSuffix(i)), i * 300);
+    });
+  };
+
+  const handleCloseYoutubePreview = () => {
+    setYtSlides(null);
+    setYtIndex(0);
+    setYtError(null);
   };
 
   const validCount = entries.filter(e => e.song_id).length;
@@ -936,6 +1011,33 @@ export default function AdminPage() {
             </div>
           )}
 
+          {/* 유튜브 게시글용 */}
+          {submitState === 'success' && submittedSongs.length > 0 && (
+            <div className="card space-y-2">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-bold text-white text-sm uppercase tracking-widest" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                  유튜브 게시글용
+                </h2>
+              </div>
+              <p className="text-muted text-xs">
+                정방형 커버 1장 + 세트리스트 5곡씩 분할된 이미지를 생성합니다. (관리자만 볼 수 있어요)
+              </p>
+              {ytError && <p className="text-xs text-red-400">{ytError}</p>}
+              <button
+                type="button"
+                onClick={handleOpenYoutubePreview}
+                disabled={ytGenerating}
+                className="btn-secondary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {ytGenerating
+                  ? <Loader className="w-4 h-4 animate-spin" />
+                  : <GalleryHorizontal className="w-4 h-4" />
+                }
+                {ytGenerating ? '생성 중...' : '이미지 만들기'}
+              </button>
+            </div>
+          )}
+
           {/* 새로운 곡 */}
           <NewSongSection onAdded={handleSongAdded} />
         </>
@@ -943,6 +1045,93 @@ export default function AdminPage() {
 
       {/* 공연 추가 탭 */}
       {activeTab === 'schedule' && <NewScheduleSection />}
+
+      {ytSlides && ytSlides.length > 0 && (
+        <>
+          <div
+            className="fixed inset-0 z-50"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+            onClick={handleCloseYoutubePreview}
+          />
+
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              className="w-full sm:max-w-sm rounded-2xl border border-white/[0.1] flex flex-col"
+              style={{ background: '#181818', maxHeight: '85dvh' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* 헤더 */}
+              <div className="flex items-center justify-between px-4 pt-3 pb-3 border-b border-white/[0.08] flex-shrink-0">
+                <p className="text-sm font-semibold text-white">
+                  유튜브 게시글용 <span className="text-muted font-normal">({ytIndex + 1}/{ytSlides.length})</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCloseYoutubePreview}
+                  className="p-2 rounded-full text-white/40 hover:text-white hover:bg-white/5 transition"
+                  aria-label="닫기"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 이미지 + 좌우 이동 */}
+              <div className="p-4 relative">
+                <img
+                  src={ytSlides[ytIndex]}
+                  alt=""
+                  className="block mx-auto h-auto rounded-xl border border-white/[0.08]"
+                  style={{ maxHeight: '50dvh', maxWidth: '100%', WebkitTouchCallout: 'default' }}
+                />
+                {ytIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setYtIndex(i => i - 1)}
+                    className="absolute left-6 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white bg-black/50 hover:bg-black/70 transition"
+                    aria-label="이전"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                )}
+                {ytIndex < ytSlides.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setYtIndex(i => i + 1)}
+                    className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white bg-black/50 hover:bg-black/70 transition"
+                    aria-label="다음"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* 도트 인디케이터 */}
+              <div className="flex items-center justify-center gap-1.5 pb-1">
+                {ytSlides.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setYtIndex(i)}
+                    aria-label={`${i + 1}번째 이미지`}
+                    className="w-1.5 h-1.5 rounded-full transition-all"
+                    style={{ background: i === ytIndex ? '#E62D2D' : 'rgba(255,255,255,0.2)' }}
+                  />
+                ))}
+              </div>
+
+              {/* 저장 버튼 */}
+              <div className="px-4 pt-3 pb-5 flex-shrink-0 flex gap-2">
+                <button type="button" onClick={handleDownloadCurrentYoutube} className="btn-secondary flex-1 text-sm">
+                  이 이미지 저장
+                </button>
+                <button type="button" onClick={handleDownloadAllYoutube} className="btn-primary flex-1 text-sm">
+                  전체 저장 ({ytSlides.length}장)
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
