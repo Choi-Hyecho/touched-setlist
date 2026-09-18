@@ -4,7 +4,7 @@ import {
   type PosterSongInput,
 } from '@/lib/setlistPoster';
 
-const YT_CHUNK_SIZE = 5;
+const YT_CHUNK_SIZE = 6;
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
 // 정방형(SQ×SQ) 배경 전체를 포스터로 채우되, 원본 비율은 흐린 백드롭으로만 사용해
@@ -103,10 +103,14 @@ function drawYoutubeCoverSlide(img: HTMLImageElement | null, opts: CoverOpts): s
 
   // 날짜
   const dateLine = `${format(date, 'yyyy.MM.dd')} (${WEEKDAYS_KO[date.getDay()]})`;
-  ctx.font = '400 30px JetBrains Mono, monospace';
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.font = '700 34px JetBrains Mono, monospace';
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = '#ffffff';
   ctx.fillText(dateLine, SQ / 2, cursorY);
-  cursorY += 30;
+  ctx.restore();
+  cursorY += 34;
 
   ctx.strokeStyle = '#E62D2D';
   ctx.lineWidth = 3;
@@ -218,8 +222,8 @@ function drawYoutubeSetlistSlide(
 
   const numCellW = 76;
   const titleCellW = maxW - numCellW;
-  const fs = 40;
-  const numFs = 32;
+  const fs = Math.round(lh * 0.295);
+  const numFs = Math.round(lh * 0.236);
   const tagFs = Math.round(fs * 0.55);
 
   const usedHeight = items.length * lh;
