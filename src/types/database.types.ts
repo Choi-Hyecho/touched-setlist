@@ -57,6 +57,7 @@ export interface Database {
           title: string;
           artist: string;
           album_id: string | null;
+          track_number: number | null;
           youtubeurl: string | null;
           spotifyurl: string | null;
           applemusicurl: string | null;

@@ -11,20 +11,24 @@ export async function GET(request: NextRequest) {
   // 이 곡이 포함된 setlists의 schedule_id 목록
   const { data: setlists } = await supabaseServer
     .from('setlists')
-    .select('schedule_id')
+    .select('schedule_id, order, notes')
     .eq('song_id', songId);
 
   if (!setlists?.length) {
     return NextResponse.json({
       years: STAT_YEARS.map((y) => ({ year: y, count: 0, lastPerf: null })),
       lastPerfOverall: null,
+      performances: [],
     });
   }
 
   const scheduleIds = setlists.map((sl: any) => sl.schedule_id);
+  const slotBySchedule = new Map<string, { order: number; notes: string | null }>(
+    setlists.map((sl: any) => [sl.schedule_id, { order: sl.order, notes: sl.notes ?? null }])
+  );
 
-  // 연도별 통계 + 전체 마지막 공연 병렬 조회
-  const [{ data: schedules }, { data: allSchedules }] = await Promise.all([
+  // 연도별 통계 + 전체 마지막 공연 + 전체 공연 목록 병렬 조회
+  const [{ data: schedules }, { data: allSchedules }, { data: performed }] = await Promise.all([
     supabaseServer
       .from('schedules')
       .select('id, title, performancedate')
@@ -38,6 +42,11 @@ export async function GET(request: NextRequest) {
       .in('id', scheduleIds)
       .order('performancedate', { ascending: false })
       .limit(1),
+    supabaseServer
+      .from('schedules')
+      .select('id, title, performancedate, venue, city')
+      .in('id', scheduleIds)
+      .order('performancedate', { ascending: false }),
   ]);
 
   // 연도별 그룹핑
@@ -64,5 +73,15 @@ export async function GET(request: NextRequest) {
     lastPerfOverall: overall
       ? { id: overall.id, title: overall.title, date: overall.performancedate }
       : null,
+    // 이 곡을 부른 모든 공연 (최신순)
+    performances: ((performed as any[]) ?? []).map((s) => ({
+      id: s.id,
+      title: s.title,
+      date: s.performancedate,
+      venue: s.venue ?? null,
+      city: s.city ?? null,
+      order: slotBySchedule.get(s.id)?.order ?? null,
+      notes: slotBySchedule.get(s.id)?.notes ?? null,
+    })),
   });
 }

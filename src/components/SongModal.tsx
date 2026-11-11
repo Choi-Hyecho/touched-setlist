@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { X, Music } from 'lucide-react';
+import Link from 'next/link';
+import { X, Music, MapPin } from 'lucide-react';
 import { SiYoutube, SiSpotify, SiApplemusic } from 'react-icons/si';
 import type { Song } from '@/types/database.types';
+import { getEncoreLabel } from '@/lib/setlistPoster';
 
 interface SongModalProps {
   song: Song;
@@ -18,9 +20,32 @@ interface YearStat {
   lastPerf: { id: string; title: string; date: string } | null;
 }
 
+interface PerformanceItem {
+  id: string;
+  title: string;
+  date: string;
+  venue: string | null;
+  city: string | null;
+  order: number | null;
+  notes: string | null;
+}
+
 interface SongStats {
   years: YearStat[];
   lastPerfOverall: { id: string; title: string; date: string } | null;
+  performances?: PerformanceItem[];
+}
+
+type ModalTab = 'info' | 'history';
+
+const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
+
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yy}.${mm}.${dd} (${WEEKDAYS_KO[d.getDay()]})`;
 }
 
 function formatDate(iso: string): string {
@@ -38,10 +63,12 @@ function daysSince(iso: string): number {
 
 export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
   const [stats, setStats] = useState<SongStats | null>(null);
+  const [tab, setTab] = useState<ModalTab>('info');
 
   useEffect(() => {
     if (!isOpen) return;
     setStats(null);
+    setTab('info');
     fetch(`/api/stats/song?id=${song.id}&year=${new Date().getFullYear()}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => data && setStats(data))
@@ -123,6 +150,109 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
               </p>
             </div>
 
+            {/* 탭 */}
+            <div
+              className="grid grid-cols-2 p-1 rounded-xl"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+              role="tablist"
+            >
+              {([
+                { key: 'info', label: '곡 정보' },
+                { key: 'history', label: '공연 기록' },
+              ] as const).map(({ key, label }) => {
+                const active = tab === key;
+                const count = key === 'history' ? stats?.performances?.length : undefined;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setTab(key)}
+                    className="py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1.5"
+                    style={{
+                      background: active ? 'rgba(230,45,45,0.14)' : 'transparent',
+                      color: active ? '#F05A5A' : 'rgba(255,255,255,0.45)',
+                    }}
+                  >
+                    {label}
+                    {count !== undefined && (
+                      <span
+                        style={{
+                          fontFamily: 'JetBrains Mono, monospace',
+                          fontSize: '0.6rem',
+                          color: active ? 'rgba(240,90,90,0.7)' : 'rgba(255,255,255,0.25)',
+                        }}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {tab === 'history' && (
+              <div className="max-h-[38dvh] overflow-y-auto -mx-1 px-1">
+                {stats === null ? (
+                  <div className="space-y-1.5">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.04)', height: 56 }} />
+                    ))}
+                  </div>
+                ) : !stats.performances?.length ? (
+                  <p className="text-xs text-white/35 text-center py-8">아직 이 곡을 부른 공연 기록이 없어요.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {stats.performances.map((p) => {
+                      const encore = getEncoreLabel(p.notes);
+                      const slot = encore ?? (p.order !== null ? `${p.order}번째` : null);
+                      return (
+                        <li key={p.id}>
+                          <Link
+                            href={`/performance/${p.id}`}
+                            onClick={onClose}
+                            className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/[0.06] active:bg-white/[0.08]"
+                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className="text-[11px]"
+                                style={{ fontFamily: 'JetBrains Mono, monospace', color: 'rgba(240,90,90,0.75)' }}
+                              >
+                                {formatShortDate(p.date)}
+                              </p>
+                              <p className="text-xs font-semibold text-white/85 truncate mt-0.5">{p.title}</p>
+                              {(p.venue || p.city) && (
+                                <p className="text-[11px] text-white/35 truncate mt-0.5 flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 flex-shrink-0" />
+                                  {[p.venue, p.city].filter(Boolean).join(' · ')}
+                                </p>
+                              )}
+                            </div>
+                            {slot && (
+                              <span
+                                className="flex-shrink-0 px-2 py-0.5 rounded-md text-[10px] font-semibold"
+                                style={{
+                                  fontFamily: 'JetBrains Mono, monospace',
+                                  background: encore ? 'rgba(255,190,50,0.1)' : 'rgba(255,255,255,0.05)',
+                                  color: encore ? 'rgba(255,190,50,0.85)' : 'rgba(255,255,255,0.4)',
+                                }}
+                              >
+                                {slot}
+                              </span>
+                            )}
+                            <span className="text-white/20 text-sm flex-shrink-0">›</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {tab === 'info' && (<>
             {/* 연주 통계 */}
             <div>
               {stats === null ? (
@@ -243,6 +373,7 @@ export default function SongModal({ song, isOpen, onClose }: SongModalProps) {
                 ))}
               </div>
             </div>
+            </>)}
 
             <button
               onClick={onClose}

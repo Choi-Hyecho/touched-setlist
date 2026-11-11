@@ -9,6 +9,7 @@ import {
 import { SITE_URL } from '@/lib/constants';
 import { renderSetlistPoster, type PosterSongInput } from '@/lib/setlistPoster';
 import { createYoutubeSlides, YOUTUBE_SLIDE_SUFFIXES } from '@/lib/youtubeSlides';
+import { countTweetLength, TWEET_MAX_LENGTH } from '@/lib/tweetLength';
 
 // ── Types ─────────────────────────────────────────────────────
 interface SongOption { id: string; title: string; album_title?: string | null }
@@ -530,6 +531,7 @@ export default function AdminPage() {
   const [tweetImageDataUrl, setTweetImageDataUrl] = useState<string | null>(null);
   const [imageGenerating, setImageGenerating]     = useState(false);
   const [submittedSongs, setSubmittedSongs]       = useState<PosterSongInput[]>([]);
+  const tweetLength = useMemo(() => countTweetLength(tweetText), [tweetText]);
   const [ytSlides, setYtSlides]         = useState<string[] | null>(null);
   const [ytIndex, setYtIndex]           = useState(0);
   const [ytGenerating, setYtGenerating] = useState(false);
@@ -965,8 +967,9 @@ export default function AdminPage() {
                 rows={Math.max(tweetText.split('\n').length, 6)}
                 className="w-full text-sm text-white/80 bg-transparent border border-white/[0.08] rounded-xl p-3 resize-y outline-none focus:border-touched-primary/40"
               />
-              <p className={`text-xs text-right ${tweetText.length > 280 ? 'text-red-400' : 'text-muted'}`}>
-                {tweetText.length} / 280
+              <p className={`text-xs text-right ${tweetLength > TWEET_MAX_LENGTH ? 'text-red-400' : 'text-muted'}`}>
+                {tweetLength} / {TWEET_MAX_LENGTH}
+                {tweetLength > TWEET_MAX_LENGTH && ` · ${tweetLength - TWEET_MAX_LENGTH}자 초과 (한글은 2자, 링크는 23자로 계산돼요)`}
               </p>
               {copyError && <p className="text-xs text-red-400">{copyError}</p>}
 
@@ -1006,7 +1009,7 @@ export default function AdminPage() {
                 type="button"
                 onClick={handlePostTweet}
                 disabled={
-                  !tweetText.trim() || tweetText.length > 280 || postState === 'loading' ||
+                  !tweetText.trim() || tweetLength > TWEET_MAX_LENGTH || postState === 'loading' ||
                   postState === 'success' || imageGenerating
                 }
                 className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"

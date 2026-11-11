@@ -40,6 +40,9 @@ export function describeTweetError(err: unknown): string {
       return `[401 인증 실패] API Key/Secret 또는 Access Token/Secret이 틀렸거나 재발급되어 무효화되었습니다. `
         + `배포 환경(Netlify) 환경변수 4개를 최신 값으로 다시 넣고 재배포하세요. (${raw})`;
     }
+    if (err.code === 403 && /longer than \d+ characters/i.test(raw)) {
+      return `[글자 수 초과] X는 한글을 2자, 링크를 23자, 이모지를 2자로 계산해서 280자를 넘었어요. 텍스트를 줄여주세요.`;
+    }
     if (err.code === 403) {
       return `[403 권한 없음] 앱 권한이 'Read and Write'가 아니거나, 권한 변경 전에 발급한 Access Token을 쓰고 있습니다. `
         + `Developer Portal > User authentication settings에서 Read and Write로 바꾼 뒤 Access Token/Secret을 재발급하세요. (${raw})`;
