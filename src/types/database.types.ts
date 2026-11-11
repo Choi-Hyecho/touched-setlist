@@ -88,19 +88,6 @@ export interface Database {
           updated_at: string;
         };
       };
-      scheduled_tweets: {
-        Row: {
-          id: string;
-          text: string;
-          image: string | null;
-          scheduled_at: string;
-          status: 'pending' | 'processing' | 'posted' | 'failed';
-          tweet_id: string | null;
-          error: string | null;
-          created_at: string;
-          posted_at: string | null;
-        };
-      };
     };
   };
 }
@@ -115,7 +102,6 @@ export type ScheduleRow = Database['public']['Tables']['schedules']['Row'];
 export type SetlistRow  = Database['public']['Tables']['setlists']['Row'];
 export type SongStatRow = Database['public']['Tables']['song_stats']['Row'];
 export type ScheduleTypeRow = Database['public']['Tables']['schedule_types']['Row'];
-export type ScheduledTweetRow = Database['public']['Tables']['scheduled_tweets']['Row'];
 
 export interface Album extends AlbumRow {}
 
