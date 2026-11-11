@@ -4,11 +4,11 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Calendar, Music, Plus, X, ChevronDown,
   CheckCircle, AlertCircle, Loader, MapPin, Copy, Check,
-  GalleryHorizontal, ChevronLeft, ChevronRight,
+  GalleryHorizontal, ChevronLeft, ChevronRight, Send, Clock,
 } from 'lucide-react';
 import { SITE_URL } from '@/lib/constants';
 import { renderSetlistPoster, type PosterSongInput } from '@/lib/setlistPoster';
-import { createYoutubeSlides } from '@/lib/youtubeSlides';
+import { createYoutubeSlides, YOUTUBE_SLIDE_SUFFIXES } from '@/lib/youtubeSlides';
 
 // ── Types ─────────────────────────────────────────────────────
 interface SongOption { id: string; title: string; album_title?: string | null }
@@ -527,6 +527,8 @@ export default function AdminPage() {
   const [copyError, setCopyError]     = useState('');
   const [postState, setPostState]     = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [postMsg, setPostMsg]         = useState('');
+  const [publishMode, setPublishMode] = useState<'now' | 'schedule'>('now');
+  const [scheduledAt, setScheduledAt] = useState('');
   const [tweetImageDataUrl, setTweetImageDataUrl] = useState<string | null>(null);
   const [imageGenerating, setImageGenerating]     = useState(false);
   const [submittedSongs, setSubmittedSongs]       = useState<PosterSongInput[]>([]);
@@ -586,6 +588,8 @@ export default function AdminPage() {
     setCopyError('');
     setPostState('idle');
     setPostMsg('');
+    setPublishMode('now');
+    setScheduledAt('');
     setTweetImageDataUrl(null);
     setImageGenerating(false);
     setSubmittedSongs([]);
@@ -680,6 +684,8 @@ export default function AdminPage() {
       setCopyError('');
       setPostState('idle');
       setPostMsg('');
+      setPublishMode('now');
+      setScheduledAt('');
       setTweetImageDataUrl(null);
       setSubmittedSongs(songInputs);
       setYtSlides(null);
@@ -707,18 +713,31 @@ export default function AdminPage() {
 
   const handlePostTweet = async () => {
     if (!tweetText.trim() || postState === 'loading') return;
+    if (publishMode === 'schedule' && !scheduledAt) return;
     setPostState('loading');
     setPostMsg('');
     try {
-      const res = await fetch('/api/admin/tweet', {
+      const endpoint = publishMode === 'schedule' ? '/api/admin/tweet/schedule' : '/api/admin/tweet';
+      const body = publishMode === 'schedule'
+        ? { text: tweetText, image: tweetImageDataUrl, scheduledAt: new Date(scheduledAt).toISOString() }
+        : { text: tweetText, image: tweetImageDataUrl };
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: tweetText, image: tweetImageDataUrl }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
-      if (!res.ok) { setPostState('error'); setPostMsg(json.error ?? '게시 실패'); return; }
+      if (!res.ok) {
+        setPostState('error');
+        setPostMsg(json.error ?? (publishMode === 'schedule' ? '예약 실패' : '게시 실패'));
+        return;
+      }
       setPostState('success');
-      setPostMsg('트위터에 게시되었습니다.');
+      setPostMsg(
+        publishMode === 'schedule'
+          ? `${new Date(scheduledAt).toLocaleString('ko-KR')}에 게시되도록 예약되었습니다.`
+          : '트위터에 게시되었습니다.'
+      );
     } catch {
       setPostState('error');
       setPostMsg('네트워크 오류');
@@ -747,25 +766,24 @@ export default function AdminPage() {
     }
   };
 
-  const triggerImageDownload = (dataUrl: string, suffix: string) => {
+  const triggerImageDownload = (dataUrl: string, index: number) => {
     const safeTitle = (schedule?.title ?? 'performance').replace(/[\\/:*?"<>|]/g, '').slice(0, 30);
+    const suffix = `${index + 1}-${YOUTUBE_SLIDE_SUFFIXES[index] ?? index + 1}`;
     const link = document.createElement('a');
     link.download = `setlist-yt-${date.replace(/-/g, '')}-${safeTitle}-${suffix}.png`;
     link.href = dataUrl;
     link.click();
   };
 
-  const ytSlideSuffix = (i: number) => (i === 0 ? 'cover' : `set${i}`);
-
   const handleDownloadCurrentYoutube = () => {
     if (!ytSlides) return;
-    triggerImageDownload(ytSlides[ytIndex], ytSlideSuffix(ytIndex));
+    triggerImageDownload(ytSlides[ytIndex], ytIndex);
   };
 
   const handleDownloadAllYoutube = () => {
     if (!ytSlides) return;
     ytSlides.forEach((dataUrl, i) => {
-      setTimeout(() => triggerImageDownload(dataUrl, ytSlideSuffix(i)), i * 300);
+      setTimeout(() => triggerImageDownload(dataUrl, i), i * 300);
     });
   };
 
@@ -986,6 +1004,37 @@ export default function AdminPage() {
                 )}
               </div>
 
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setPublishMode('now'); setPostState('idle'); setPostMsg(''); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    publishMode === 'now' ? 'bg-touched-primary/15 text-touched-primary' : 'bg-white/[0.04] text-muted'
+                  }`}
+                >
+                  <Send className="w-3.5 h-3.5" /> 즉시 발행
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPublishMode('schedule'); setPostState('idle'); setPostMsg(''); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    publishMode === 'schedule' ? 'bg-touched-primary/15 text-touched-primary' : 'bg-white/[0.04] text-muted'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" /> 예약 발행
+                </button>
+              </div>
+
+              {publishMode === 'schedule' && (
+                <input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                  onChange={e => { setScheduledAt(e.target.value); setPostState('idle'); setPostMsg(''); }}
+                  className="w-full text-sm text-white/80 bg-transparent border border-white/[0.08] rounded-xl p-2.5 outline-none focus:border-touched-primary/40"
+                />
+              )}
+
               {postMsg && (
                 <div className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm ${
                   postState === 'success'
@@ -1002,11 +1051,17 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={handlePostTweet}
-                disabled={!tweetText.trim() || tweetText.length > 280 || postState === 'loading' || postState === 'success' || imageGenerating}
+                disabled={
+                  !tweetText.trim() || tweetText.length > 280 || postState === 'loading' ||
+                  postState === 'success' || imageGenerating ||
+                  (publishMode === 'schedule' && !scheduledAt)
+                }
                 className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {postState === 'loading' && <Loader className="w-4 h-4 animate-spin" />}
-                {postState === 'success' ? '게시 완료' : '트위터에 게시하기'}
+                {postState === 'success'
+                  ? (publishMode === 'schedule' ? '예약 완료' : '게시 완료')
+                  : (publishMode === 'schedule' ? '예약 등록하기' : '트위터에 게시하기')}
               </button>
             </div>
           )}
@@ -1020,7 +1075,7 @@ export default function AdminPage() {
                 </h2>
               </div>
               <p className="text-muted text-xs">
-                정방형 커버 1장 + 세트리스트 5곡씩 분할된 이미지를 생성합니다. (관리자만 볼 수 있어요)
+                정방형 이미지 3장(커버 · 세트리스트 · 사이트 안내)을 생성합니다. (관리자만 볼 수 있어요)
               </p>
               {ytError && <p className="text-xs text-red-400">{ytError}</p>}
               <button

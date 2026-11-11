@@ -79,16 +79,17 @@ export function fitTitleFontSize(
   return minSize;
 }
 
-// 세로형(1080×1620) 세트리스트 포스터 렌더링. 사이트 "이미지 저장" 기능과 트위터 자동 게시
-// 첨부 이미지가 이 함수 하나를 공유해서, 두 곳의 결과물이 항상 동일하게 유지된다.
+// 세트리스트 포스터 렌더링 (기본 세로형 1080×1620). 사이트 "이미지 저장" 기능, 트위터 자동 게시
+// 첨부 이미지, 유튜브 게시글용 정방형(1080×1080) 이미지가 이 함수 하나를 공유해서 결과물이 항상 동일하게 유지된다.
 export function renderSetlistPoster(
   img: HTMLImageElement | null,
   opts: { performanceTitle: string; performanceDate: string; songs: PosterSongInput[] },
+  size: { width: number; height: number } = { width: 1080, height: 1620 },
 ): string {
   const { performanceTitle, performanceDate, songs } = opts;
   const date = new Date(performanceDate);
 
-  const W = 1080, H = 1620;
+  const W = size.width, H = size.height;
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
